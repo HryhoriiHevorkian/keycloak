@@ -1299,6 +1299,14 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
             }
         }
 
+        if ($scope.client.attributes["backchannel.user.code.parameter.required"]) {
+            if ($scope.client.attributes["backchannel.user.code.parameter.required"] == "true") {
+                $scope.backchannelUserCodeParameterRequired = true;
+            } else {
+                $scope.backchannelUserCodeParameterRequired = false;
+            }
+        }
+
         if ($scope.client.attributes["backchannel.logout.revoke.offline.tokens"]) {
             if ($scope.client.attributes["backchannel.logout.revoke.offline.tokens"] == "true") {
                 $scope.backchannelLogoutRevokeOfflineSessions = true;
@@ -1638,6 +1646,12 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
             $scope.clientEdit.attributes["backchannel.logout.session.required"] = "true";
         } else {
             $scope.clientEdit.attributes["backchannel.logout.session.required"] = "false";
+        }
+
+        if ($scope.backchannelUserCodeParameterRequired == true) {
+            $scope.clientEdit.attributes["backchannel.user.code.parameter.required"] = "true";
+        } else {
+            $scope.clientEdit.attributes["backchannel.user.code.parameter.required"] = "false";
         }
 
         if ($scope.backchannelLogoutRevokeOfflineSessions == true) {
