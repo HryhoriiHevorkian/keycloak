@@ -1299,11 +1299,11 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
             }
         }
 
-        if ($scope.client.attributes["backchannel.user.code.parameter.required"]) {
-            if ($scope.client.attributes["backchannel.user.code.parameter.required"] == "true") {
-                $scope.backchannelUserCodeParameterRequired = true;
+        if ($scope.client.attributes["backchannel.user.code.parameter"]) {
+            if ($scope.client.attributes["backchannel.user.code.parameter"] == "true") {
+                $scope.backchannelUserCodeParameter = true;
             } else {
-                $scope.backchannelUserCodeParameterRequired = false;
+                $scope.backchannelUserCodeParameter = false;
             }
         }
 
@@ -1648,10 +1648,10 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
             $scope.clientEdit.attributes["backchannel.logout.session.required"] = "false";
         }
 
-        if ($scope.backchannelUserCodeParameterRequired == true) {
-            $scope.clientEdit.attributes["backchannel.user.code.parameter.required"] = "true";
+        if ($scope.backchannelUserCodeParameter == true) {
+            $scope.clientEdit.attributes["backchannel.user.code.parameter"] = "true";
         } else {
-            $scope.clientEdit.attributes["backchannel.user.code.parameter.required"] = "false";
+            $scope.clientEdit.attributes["backchannel.user.code.parameter"] = "false";
         }
 
         if ($scope.backchannelLogoutRevokeOfflineSessions == true) {

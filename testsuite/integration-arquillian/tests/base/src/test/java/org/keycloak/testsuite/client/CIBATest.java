@@ -124,7 +124,7 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
     private final String TEST_CLIENT_PASSWORD = "password";
 
     private AuthenticationRequestAcknowledgement doBackchannelAuthenticationRequest(String username) throws Exception {
-        return doBackchannelAuthenticationRequest(TEST_CLIENT_NAME, TEST_CLIENT_PASSWORD, username, null, null);
+        return doBackchannelAuthenticationRequest(TEST_CLIENT_NAME, TEST_CLIENT_PASSWORD, username, null, "secret_code");
     }
 
     private AuthenticationRequestAcknowledgement doBackchannelAuthenticationRequest(String clientId, String clientSecret, String username, String bindingMessage, String userCode) throws Exception {
@@ -869,11 +869,13 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
 
     private void prepareCIBASettings(ClientResource clientResource, ClientRepresentation clientRep) {
         OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setBackchannelTokenDeliveryMode("poll");
+        OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setBackchannelUserCodeParameter(true);
         clientResource.update(clientRep);
     }
 
     private void revertCIBASettings(ClientResource clientResource, ClientRepresentation clientRep) {
         OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setBackchannelTokenDeliveryMode(null);
+        OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setBackchannelUserCodeParameter(false);
         clientResource.update(clientRep);
     }
 

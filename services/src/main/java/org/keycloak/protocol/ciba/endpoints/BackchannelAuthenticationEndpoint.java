@@ -181,7 +181,7 @@ public class BackchannelAuthenticationEndpoint {
         String userCode = params.getFirst(CIBAConstants.USER_CODE);
         if (userCode != null) {
             request.setUserCode(userCode);
-            logger.info("  user_code = " + request.getUserCode());
+            logger.debug("  user_code = " + request.getUserCode());
         }
 
         return request;

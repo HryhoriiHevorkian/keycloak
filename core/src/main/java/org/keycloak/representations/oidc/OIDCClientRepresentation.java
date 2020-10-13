@@ -128,7 +128,7 @@ public class OIDCClientRepresentation {
     // OIDC CIBA
     private String backchannel_token_delivery_mode;
 
-    private String backchannel_user_code_parameter_required;
+    private Boolean backchannel_user_code_parameter;
 
     public List<String> getRedirectUris() {
         return redirect_uris;
@@ -500,11 +500,11 @@ public class OIDCClientRepresentation {
         this.backchannel_token_delivery_mode = backchannel_token_delivery_mode;
     }
 
-    public String getBackchannelUserCodeParameterRequired() {
-        return backchannel_user_code_parameter_required;
+    public Boolean getBackchannelUserCodeParameter() {
+        return backchannel_user_code_parameter;
     }
 
-    public void setBackchannelUserCodeParameterRequired(String backchannel_user_code_parameter_required) {
-        this.backchannel_user_code_parameter_required = backchannel_user_code_parameter_required;
+    public void setBackchannelUserCodeParameter(Boolean backchannel_user_code_parameter) {
+        this.backchannel_user_code_parameter = backchannel_user_code_parameter;
     }
 }

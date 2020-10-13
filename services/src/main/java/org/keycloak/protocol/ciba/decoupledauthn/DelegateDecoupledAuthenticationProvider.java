@@ -1,6 +1,5 @@
 package org.keycloak.protocol.ciba.decoupledauthn;
 
-import org.apache.commons.lang.BooleanUtils;
 import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.broker.provider.util.SimpleHttp;
@@ -8,14 +7,18 @@ import org.keycloak.common.util.Time;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
-import org.keycloak.models.*;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.ClientScopeModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.CodeToTokenStoreProvider;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.endpoints.request.BackchannelAuthenticationRequest;
 import org.keycloak.protocol.ciba.resolvers.CIBALoginUserResolver;
 import org.keycloak.protocol.ciba.utils.DecoupledAuthStatus;
 import org.keycloak.protocol.ciba.utils.DecoupledAuthnResult;
 import org.keycloak.protocol.ciba.utils.DecoupledAuthnResultParser;
-import org.keycloak.protocol.oidc.OIDCConfigAttributes;
+import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.services.CorsErrorResponseException;
 
 import javax.ws.rs.core.MediaType;
@@ -167,7 +170,8 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
                 userSessionIdWillBeCreated, userIdToBeAuthenticated, client.getClientId(), authResultId);
         String decoupledAuthId = persistDecoupledAuthId(session, decoupledAuthIdData, expiresIn);
 
-        String userCodeSupported = client.getAttribute(OIDCConfigAttributes.BACKCHANNEL_USER_CODE_PARAMETER_REQUIRED);
+        OIDCAdvancedConfigWrapper configWrapper = OIDCAdvancedConfigWrapper.fromClientModel(client);
+        boolean userCodeSupported = configWrapper.getBackchannelUserCodeParameter();
 
         logger.info("  decoupledAuthnRequestUri = " + decoupledAuthenticationRequestUri);
         logger.info("  userCode supported = " + userCodeSupported);
@@ -180,7 +184,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
                 .param(CIBAConstants.SCOPE, request.getScope())
                 .param(DECOUPLED_DEFAULT_CLIENT_SCOPE, defaultClientScope)
                 .param(CIBAConstants.BINDING_MESSAGE, request.getBindingMessage())
-                .param(CIBAConstants.USER_CODE, BooleanUtils.toBoolean(userCodeSupported) ? request.getUserCode() : null)
+                .param(CIBAConstants.USER_CODE, userCodeSupported ? request.getUserCode() : null)
                 .asStatus();
             logger.info("  Decoupled Authn Request URI Access = " + status);
             if (status != 200) {

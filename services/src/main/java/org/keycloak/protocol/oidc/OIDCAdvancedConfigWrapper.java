@@ -202,14 +202,14 @@ public class OIDCAdvancedConfigWrapper {
         setAttribute(OIDCConfigAttributes.BACKCHANNEL_TOKEN_DELIVERY_MODE, backchannelTokenDeliveryMode);
     }
 
-    public boolean getBackchannelUserCodeRequired() {
-        String backchannelUserCodeParameterRequired = getAttribute(OIDCConfigAttributes.BACKCHANNEL_USER_CODE_PARAMETER_REQUIRED);
-        return Boolean.parseBoolean(backchannelUserCodeParameterRequired);
+    public boolean getBackchannelUserCodeParameter() {
+        String backchannelUserCodeParameter = getAttribute(OIDCConfigAttributes.BACKCHANNEL_USER_CODE_PARAMETER);
+        return Boolean.parseBoolean(backchannelUserCodeParameter);
     }
 
-    public void setBackchannelUserCodeRequired(boolean backchannelUserCodeRequired) {
-        String val = String.valueOf(backchannelUserCodeRequired);
-        setAttribute(OIDCConfigAttributes.BACKCHANNEL_USER_CODE_PARAMETER_REQUIRED, val);
+    public void setBackchannelUserCodeParameter(boolean backchannelUserCodeParameter) {
+        String val = String.valueOf(backchannelUserCodeParameter);
+        setAttribute(OIDCConfigAttributes.BACKCHANNEL_USER_CODE_PARAMETER, val);
     }
 
     private String getAttribute(String attrKey) {
