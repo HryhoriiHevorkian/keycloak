@@ -21,6 +21,7 @@ public enum ClientPolicyEvent {
 
     REGISTER,
     UPDATE,
+    DELETE,
     AUTHORIZATION_REQUEST,
     TOKEN_REQUEST,
     TOKEN_REFRESH,

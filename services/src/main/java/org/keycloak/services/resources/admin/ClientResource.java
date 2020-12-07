@@ -51,10 +51,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.representations.idm.UserSessionRepresentation;
 import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.ErrorResponseException;
-import org.keycloak.services.clientpolicy.AdminClientRegisterContext;
-import org.keycloak.services.clientpolicy.AdminClientUpdateContext;
-import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.DefaultClientPolicyManager;
+import org.keycloak.services.clientpolicy.*;
 import org.keycloak.services.clientregistration.ClientRegistrationTokenUtils;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.managers.ClientManager;
@@ -220,6 +217,12 @@ public class ClientResource {
 
         if (client == null) {
             throw new NotFoundException("Could not find client");
+        }
+
+        try {
+            session.clientPolicy().triggerOnEvent(new AdminClientDeleteContext(auth.adminAuth()));
+        } catch (ClientPolicyException cpe) {
+            throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }
 
         new ClientManager(new RealmManager(session)).removeClient(realm, client);
@@ -568,9 +571,9 @@ public class ClientResource {
         if (node == null) {
             throw new BadRequestException("Node not found in params");
         }
-        
+
         ReservedCharValidator.validate(node);
-        
+
         if (logger.isDebugEnabled()) logger.debug("Register node: " + node);
         client.registerNode(node, Time.currentTime());
         adminEvent.operation(OperationType.CREATE).resource(ResourceType.CLUSTER_NODE).resourcePath(session.getContext().getUri(), node).success();

@@ -28,6 +28,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.crypto.Algorithm;
+import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -59,6 +60,48 @@ public class SecureSigningAlgorithmEnforceExecutor implements ClientPolicyExecut
     @Override
     public String getProviderId() {
         return componentModel.getProviderId();
+    }
+
+    @Override
+    public void beforeRegister(ClientPolicyContext context) throws ClientPolicyException {
+        if (context instanceof AdminClientRegisterContext) {
+            verifySecureSigningAlgorithmOnRegistration(((AdminClientRegisterContext)context).getProposedClientRepresentation(), true);
+        } else if (context instanceof DynamicClientRegisterContext) {
+            verifySecureSigningAlgorithmOnRegistration(((DynamicClientRegisterContext)context).getProposedClientRepresentation(), false);
+        } else {
+            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
+        }
+    }
+
+    @Override
+    public void afterRegister(ClientPolicyContext context, ClientModel clientModel) {
+
+    }
+
+    @Override
+    public void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException {
+        if (context instanceof AdminClientUpdateContext) {
+            verifySecureSigningAlgorithmOnUpdate(((AdminClientUpdateContext)context).getProposedClientRepresentation(), true);
+        } else if (context instanceof DynamicClientUpdateContext) {
+            verifySecureSigningAlgorithmOnUpdate(((DynamicClientUpdateContext)context).getProposedClientRepresentation(), false);
+        } else {
+            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
+        }
+    }
+
+    @Override
+    public void afterUpdate(ClientPolicyContext context, ClientModel clientModel) {
+
+    }
+
+    @Override
+    public void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
+
+    }
+
+    @Override
+    public void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
+
     }
 
     @Override

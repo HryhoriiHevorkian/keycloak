@@ -85,6 +85,36 @@ public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPo
         }
     }
 
+    @Override
+    public void beforeRegister(ClientPolicyContext context) throws ClientPolicyException {
+
+    }
+
+    @Override
+    public void afterRegister(ClientPolicyContext context, ClientModel clientModel) {
+
+    }
+
+    @Override
+    public void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException {
+
+    }
+
+    @Override
+    public void afterUpdate(ClientPolicyContext context, ClientModel clientModel) {
+
+    }
+
+    @Override
+    public void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
+
+    }
+
+    @Override
+    public void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
+
+    }
+
     private void executeOnAuthorizationRequest(
             OIDCResponseType parsedResponseType,
             AuthorizationEndpointRequest request,
