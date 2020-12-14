@@ -17,7 +17,6 @@
 
 package org.keycloak.services.clientpolicy.executor;
 
-import org.keycloak.models.ClientModel;
 import org.keycloak.provider.Provider;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
@@ -47,23 +46,4 @@ public interface ClientPolicyExecutorProvider extends Provider {
     String getName();
 
     String getProviderId();
-
-    @Deprecated
-    void beforeRegister(ClientPolicyContext context) throws ClientPolicyException;
-
-    @Deprecated
-    void afterRegister(ClientPolicyContext context, ClientModel clientModel);
-
-    @Deprecated
-    void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException;
-
-    @Deprecated
-    void afterUpdate(ClientPolicyContext context, ClientModel clientModel);
-
-    @Deprecated
-    void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException;
-
-    @Deprecated
-    void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException;
-
 }

@@ -55,36 +55,6 @@ public class HolderOfKeyEnforceExecutor extends AbstractAugumentingClientRegistr
     }
 
     @Override
-    public void beforeRegister(ClientPolicyContext context) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void afterRegister(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void afterUpdate(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
     protected void augment(ClientRepresentation rep) {
         if (Boolean.parseBoolean(componentModel.getConfig().getFirst(AbstractAugumentingClientRegistrationPolicyExecutor.IS_AUGMENT))) {
             OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).setUseMtlsHoKToken(true);
