@@ -17,16 +17,14 @@
 
 package org.keycloak.services.clientpolicy.executor;
 
-import java.util.List;
-
 import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+
+import java.util.List;
 
 public class SecureClientAuthEnforceExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
 
@@ -51,37 +49,9 @@ public class SecureClientAuthEnforceExecutor extends AbstractAugumentingClientRe
 
     private void verifyClientAuthenticationMethod(String clientAuthenticatorType) throws ClientPolicyException {
         List<String> acceptableClientAuthn = componentModel.getConfig().getList(SecureClientAuthEnforceExecutorFactory.CLIENT_AUTHNS);
-        if (acceptableClientAuthn != null && acceptableClientAuthn.stream().anyMatch(i->i.equals(clientAuthenticatorType))) return;
+        if (acceptableClientAuthn != null && acceptableClientAuthn.stream().anyMatch(i -> i.equals(clientAuthenticatorType)))
+            return;
         throw new ClientPolicyException(OAuthErrorException.INVALID_CLIENT_METADATA, "Invalid client metadata: token_endpoint_auth_method");
     }
 
-    @Override
-    public void beforeRegister(ClientPolicyContext context) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void afterRegister(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void afterUpdate(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
 }

@@ -22,7 +22,7 @@ public class ClientDisabledClientEnforceExecutor extends AbstractAugumentingClie
     }
 
     @Override
-    protected void validate(ClientRepresentation rep) throws ClientPolicyException {
+    protected void validate(ClientRepresentation rep) {
 
     }
 

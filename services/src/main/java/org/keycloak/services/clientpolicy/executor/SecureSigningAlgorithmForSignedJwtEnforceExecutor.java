@@ -25,7 +25,6 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.crypto.Algorithm;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.jose.jws.JWSInputException;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -51,36 +50,6 @@ public class SecureSigningAlgorithmForSignedJwtEnforceExecutor implements Client
     @Override
     public String getProviderId() {
         return componentModel.getProviderId();
-    }
-
-    @Override
-    public void beforeRegister(ClientPolicyContext context) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void afterRegister(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void afterUpdate(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
     }
 
     @Override

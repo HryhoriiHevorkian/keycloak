@@ -17,18 +17,13 @@
 
 package org.keycloak.services.clientpolicy.executor;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.crypto.Algorithm;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -63,70 +58,28 @@ public class SecureSigningAlgorithmEnforceExecutor implements ClientPolicyExecut
     }
 
     @Override
-    public void beforeRegister(ClientPolicyContext context) throws ClientPolicyException {
-        if (context instanceof AdminClientRegisterContext) {
-            verifySecureSigningAlgorithmOnRegistration(((AdminClientRegisterContext)context).getProposedClientRepresentation(), true);
-        } else if (context instanceof DynamicClientRegisterContext) {
-            verifySecureSigningAlgorithmOnRegistration(((DynamicClientRegisterContext)context).getProposedClientRepresentation(), false);
-        } else {
-            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
-        }
-    }
-
-    @Override
-    public void afterRegister(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeUpdate(ClientPolicyContext context, ClientModel clientModel) throws ClientPolicyException {
-        if (context instanceof AdminClientUpdateContext) {
-            verifySecureSigningAlgorithmOnUpdate(((AdminClientUpdateContext)context).getProposedClientRepresentation(), true);
-        } else if (context instanceof DynamicClientUpdateContext) {
-            verifySecureSigningAlgorithmOnUpdate(((DynamicClientUpdateContext)context).getProposedClientRepresentation(), false);
-        } else {
-            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
-        }
-    }
-
-    @Override
-    public void afterUpdate(ClientPolicyContext context, ClientModel clientModel) {
-
-    }
-
-    @Override
-    public void beforeView(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
-    public void beforeDelete(ClientPolicyContext provider, ClientModel clientModel) throws ClientPolicyException {
-
-    }
-
-    @Override
     public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
-        case REGISTER:
-            if (context instanceof AdminClientRegisterContext) {
-                verifySecureSigningAlgorithmOnRegistration(((AdminClientRegisterContext)context).getProposedClientRepresentation(), true);
-            } else if (context instanceof DynamicClientRegisterContext) {
-                verifySecureSigningAlgorithmOnRegistration(((DynamicClientRegisterContext)context).getProposedClientRepresentation(), false);
-            } else {
-                throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
-            }
-            break;
-        case UPDATE:
-            if (context instanceof AdminClientUpdateContext) {
-                verifySecureSigningAlgorithmOnUpdate(((AdminClientUpdateContext)context).getProposedClientRepresentation(), true);
-            } else if (context instanceof DynamicClientUpdateContext) {
-                verifySecureSigningAlgorithmOnUpdate(((DynamicClientUpdateContext)context).getProposedClientRepresentation(), false);
-            } else {
-                throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
-            }
-            break;
-        default:
-            return;
+            case REGISTER:
+                if (context instanceof AdminClientRegisterContext) {
+                    verifySecureSigningAlgorithmOnRegistration(((AdminClientRegisterContext)context).getProposedClientRepresentation(), true);
+                } else if (context instanceof DynamicClientRegisterContext) {
+                    verifySecureSigningAlgorithmOnRegistration(((DynamicClientRegisterContext)context).getProposedClientRepresentation(), false);
+                } else {
+                    throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
+                }
+                break;
+            case UPDATE:
+                if (context instanceof AdminClientUpdateContext) {
+                    verifySecureSigningAlgorithmOnUpdate(((AdminClientUpdateContext)context).getProposedClientRepresentation(), true);
+                } else if (context instanceof DynamicClientUpdateContext) {
+                    verifySecureSigningAlgorithmOnUpdate(((DynamicClientUpdateContext)context).getProposedClientRepresentation(), false);
+                } else {
+                    throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
+                }
+                break;
+            default:
+                return;
         }
     }
 
@@ -189,14 +142,14 @@ public class SecureSigningAlgorithmEnforceExecutor implements ClientPolicyExecut
             return;
         }
         switch (signatureAlgorithm) {
-        case Algorithm.PS256:
-        case Algorithm.PS384:
-        case Algorithm.PS512:
-        case Algorithm.ES256:
-        case Algorithm.ES384:
-        case Algorithm.ES512:
-            ClientPolicyLogger.log(logger, "Passed. signatureAlgorithm = " + signatureAlgorithm);
-            return;
+            case Algorithm.PS256:
+            case Algorithm.PS384:
+            case Algorithm.PS512:
+            case Algorithm.ES256:
+            case Algorithm.ES384:
+            case Algorithm.ES512:
+                ClientPolicyLogger.log(logger, "Passed. signatureAlgorithm = " + signatureAlgorithm);
+                return;
         }
         ClientPolicyLogger.log(logger, "NOT allowed signatureAlgorithm = " + signatureAlgorithm);
         throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed signature algorithm.");
