@@ -22,17 +22,17 @@ import org.keycloak.models.UserModel;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.resources.admin.AdminAuth;
 
-public class AdminClientDeleteContext implements ClientUpdateContext {
+public class AdminClientUnregisteredContext implements ClientUpdateContext {
 
     private final AdminAuth adminAuth;
 
-    public AdminClientDeleteContext(AdminAuth adminAuth) {
+    public AdminClientUnregisteredContext(AdminAuth adminAuth) {
         this.adminAuth = adminAuth;
     }
 
     @Override
     public ClientPolicyEvent getEvent() {
-        return ClientPolicyEvent.DELETE;
+        return ClientPolicyEvent.UNREGISTER;
     }
 
     @Override

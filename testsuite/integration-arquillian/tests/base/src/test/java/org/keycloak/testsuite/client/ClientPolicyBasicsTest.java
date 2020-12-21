@@ -1228,6 +1228,36 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testClientDisabledClientEnforceExecutor() throws ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceRolesCondition", UpdatingClientSourceRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionUpdatingClientSourceRoles(provider, new ArrayList<>(Arrays.asList(AdminRoles.CREATE_CLIENT)));
+        });
+        registerCondition("UpdatingClientSourceRolesCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceRolesCondition");
+
+        createExecutor("ClientScopesClientRegistrationEnforcerExecutor", ClientScopesClientRegistrationEnforcerExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> {
+        });
+        registerExecutor("ClientScopesClientRegistrationEnforcerExecutor", policyName);
+        logger.info("... Registered Executor : ClientScopesClientRegistrationEnforcerExecutor");
+
+        String cAlphaId = null;
+        cAlphaId = createClientByAdmin("Alpha-App", (ClientRepresentation clientRep) -> {});
+        try {
+            createClientByAdmin("Betta-App", (ClientRepresentation clientRep) -> {});
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+    }
+
     private void checkMtlsFlow(String password) throws IOException {
         ClientResource clientResource = ApiUtil.findClientByClientId(adminClient.realm(REALM_NAME), "test-app");
         ClientRepresentation clientRep = clientResource.toRepresentation();

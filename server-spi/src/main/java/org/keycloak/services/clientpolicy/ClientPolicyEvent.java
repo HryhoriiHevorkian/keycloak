@@ -23,7 +23,6 @@ public enum ClientPolicyEvent {
     REGISTERED,
     UPDATE,
     UPDATED,
-    DELETE,
     VIEW,
     UNREGISTER,
     AUTHORIZATION_REQUEST,
