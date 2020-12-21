@@ -191,7 +191,7 @@ public class ClientResource {
      * @return
      */
     @Path("certificates/{attr}")
-    public ClientAttributeCertificateResource getCertficateResource(@PathParam("attr") String attributePrefix) {
+    public ClientAttributeCertificateResource getCertificateResource(@PathParam("attr") String attributePrefix) {
         return new ClientAttributeCertificateResource(realm, auth, client, session, attributePrefix, adminEvent);
     }
 

@@ -17,8 +17,7 @@
 
 package org.keycloak.testsuite.client;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
 import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
 
@@ -52,6 +51,7 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.adapters.AdapterUtils;
 import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.admin.client.resource.ClientScopesResource;
 import org.keycloak.authentication.authenticators.client.ClientIdAndSecretAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientSecretAuthenticator;
@@ -78,14 +78,7 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.RefreshToken;
-import org.keycloak.representations.idm.ClientInitialAccessCreatePresentation;
-import org.keycloak.representations.idm.ClientInitialAccessPresentation;
-import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.ComponentRepresentation;
-import org.keycloak.representations.idm.CredentialRepresentation;
-import org.keycloak.representations.idm.EventRepresentation;
-import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.*;
 import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -101,6 +94,7 @@ import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditio
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesConditionFactory;
+import org.keycloak.services.clientregistration.policy.impl.ClientScopesClientRegistrationPolicyFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -1053,7 +1047,111 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             });
         } finally {
             deleteClientByAdmin(cid);
+        }
+    }
 
+    @Test
+    public void testMaxClientsClientRegistrationEnforceExecutor() throws ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        int clientsCount = adminClient.realm(TEST_REALM_NAME).clients().findAll().size();
+        int newClientsLimit = clientsCount + 1;
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, Collections.singletonList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER));
+        });
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("MaxClientsClientRegistrationEnforceExecutor", MaxClientsClientRegistrationEnforceExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> provider.getConfig().putSingle(MaxClientsClientRegistrationEnforceExecutorFactory.MAX_CLIENTS, String.valueOf(newClientsLimit)));
+
+        registerExecutor("MaxClientsClientRegistrationEnforceExecutor", policyName);
+        logger.info("... Registered Executor : MaxClientsClientRegistrationEnforceExecutor");
+
+        String cAlphaId = null;
+        cAlphaId = createClientByAdmin("Alpha-maxClients-App", (ClientRepresentation clientRep) -> {});
+        try {
+            createClientByAdmin("Betta-maxClients-App", (ClientRepresentation clientRep) -> {});
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+    }
+
+    @Test
+    public void testClientScopesClientRegistrationEnforcerExecutor() throws ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) -> setConditionRegistrationMethods(provider, Collections.singletonList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER)));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("ClientScopesClientRegistrationEnforcerExecutor", ClientScopesClientRegistrationEnforcerExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> provider.getConfig().putSingle(ClientScopesClientRegistrationPolicyFactory.ALLOWED_CLIENT_SCOPES, "foo"));
+
+        registerExecutor("ClientScopesClientRegistrationEnforcerExecutor", policyName);
+        logger.info("... Registered Executor : ClientScopesClientRegistrationEnforcerExecutor");
+
+        ClientScopesResource clientScopesResource = adminClient.realm(REALM_NAME).clientScopes();
+        //create default client scope
+        ClientScopeRepresentation fooClientScope = new ClientScopeRepresentation();
+        fooClientScope.setName("foo");
+        Response resp = clientScopesResource.create(fooClientScope);
+        String fooClientScopeId = ApiUtil.getCreatedId(resp);
+        adminClient.realm(REALM_NAME).addDefaultDefaultClientScope(fooClientScopeId);
+
+        //create optional client scope
+        ClientScopeRepresentation hazClientScope = new ClientScopeRepresentation();
+        hazClientScope.setName("haz");
+        resp = clientScopesResource.create(hazClientScope);
+        String hazClientScopeId = ApiUtil.getCreatedId(resp);
+        adminClient.realm(REALM_NAME).addDefaultOptionalClientScope(hazClientScopeId);
+
+        String cAlphaId = null;
+        try {
+            //create client with allowed client scopes
+            cAlphaId = createClientByAdmin("Alpha-clientScopes-App", (ClientRepresentation clientRep) -> {
+                clientRep.setDefaultClientScopes(Collections.singletonList("foo"));
+                clientRep.setOptionalClientScopes(Collections.singletonList("haz"));
+            });
+
+            try {
+                //update client with no allowed client scopes
+                updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                    clientRep.setDefaultClientScopes(Collections.singletonList("bar"));
+                    clientRep.setOptionalClientScopes(Collections.singletonList("bar"));
+                });
+                fail();
+            } catch (BadRequestException bre) {
+                ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+                assertTrue(clientByAdmin.getDefaultClientScopes().contains("foo"));
+                assertTrue(clientByAdmin.getOptionalClientScopes().contains("haz"));
+            }
+
+            try {
+                //create client with no allowed client scopes
+                createClientByAdmin("Betta-clientScopes-App", (ClientRepresentation clientRep) -> {
+                    clientRep.setDefaultClientScopes(Collections.singletonList("bar"));
+                    clientRep.setOptionalClientScopes(Collections.singletonList("bar"));
+                });
+                fail();
+            } catch (ClientPolicyException e) {
+                assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+            }
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+            adminClient.realm(REALM_NAME).removeDefaultDefaultClientScope(fooClientScopeId);
+            clientScopesResource.get(fooClientScopeId).remove();
+            adminClient.realm(REALM_NAME).removeDefaultOptionalClientScope(hazClientScopeId);
+            clientScopesResource.get(hazClientScopeId).remove();
         }
     }
 
@@ -1171,7 +1269,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
         Assert.assertNotNull(tokenResponse);
         TokenMetadataRepresentation tokenMetadataRepresentation = JsonSerialization.readValue(tokenResponse, TokenMetadataRepresentation.class);
-        Assert.assertTrue(tokenMetadataRepresentation.isActive());
+        assertTrue(tokenMetadataRepresentation.isActive());
 
         // Check token revoke.
         CloseableHttpResponse tokenRevokeResponse;
