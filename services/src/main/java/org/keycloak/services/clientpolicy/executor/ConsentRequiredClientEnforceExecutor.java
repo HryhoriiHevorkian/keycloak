@@ -3,7 +3,6 @@ package org.keycloak.services.clientpolicy.executor;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.events.Errors;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -35,18 +34,18 @@ public class ConsentRequiredClientEnforceExecutor implements ClientPolicyExecuto
     public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
             case REGISTERED:
-                ((ClientUpdateContext) context).getAuthenticatedClient().setConsentRequired(true);
+                ClientUpdateContext registeredClientContext = (ClientUpdateContext) context;
+                registeredClientContext.getRegisteredClient().setConsentRequired(false);
                 break;
             case UPDATE:
                 ClientUpdateContext clientUpdateContext = (ClientUpdateContext) context;
-                ClientModel clientModel = clientUpdateContext.getAuthenticatedClient();
-
-                boolean consentRequired = clientModel.isConsentRequired();
-                boolean newConsentRequired = clientUpdateContext.getClientToBeUpdated().isConsentRequired();
+                boolean consentRequired = clientUpdateContext.getClientToBeUpdated().isConsentRequired();
+                boolean newConsentRequired = clientUpdateContext.getProposedClientRepresentation().isConsentRequired();
 
                 if (!consentRequired && newConsentRequired) {
                     throw new ClientPolicyException(Errors.NOT_ALLOWED, "Not permitted to update consentRequired to false");
                 }
+                break;
             default:
                 return;
         }

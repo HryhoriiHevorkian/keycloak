@@ -1,19 +1,16 @@
 package org.keycloak.services.clientpolicy;
 
 import org.keycloak.models.ClientModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.representations.JsonWebToken;
-import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.resources.admin.AdminAuth;
 
 public class AdminClientRegisteredContext implements ClientUpdateContext {
 
-    private final ClientRepresentation clientRepresentation;
+    private final ClientModel registeredClient;
     private final AdminAuth adminAuth;
 
-    public AdminClientRegisteredContext(ClientRepresentation clientRepresentation,
+    public AdminClientRegisteredContext(ClientModel registeredClient,
                                         AdminAuth adminAuth) {
-        this.clientRepresentation = clientRepresentation;
+        this.registeredClient = registeredClient;
         this.adminAuth = adminAuth;
     }
 
@@ -23,22 +20,12 @@ public class AdminClientRegisteredContext implements ClientUpdateContext {
     }
 
     @Override
-    public ClientRepresentation getProposedClientRepresentation() {
-        return clientRepresentation;
-    }
-
-    @Override
     public ClientModel getAuthenticatedClient() {
         return adminAuth.getClient();
     }
 
     @Override
-    public UserModel getAuthenticatedUser() {
-        return adminAuth.getUser();
-    }
-
-    @Override
-    public JsonWebToken getToken() {
-        return adminAuth.getToken();
+    public ClientModel getRegisteredClient() {
+        return registeredClient;
     }
 }

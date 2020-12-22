@@ -3,7 +3,6 @@ package org.keycloak.services.clientpolicy.executor;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.events.Errors;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -35,18 +34,18 @@ public class ClientDisabledClientEnforceExecutor implements ClientPolicyExecutor
     public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
             case REGISTERED:
-                ((ClientUpdateContext) context).getAuthenticatedClient().setEnabled(false);
+                ClientUpdateContext registeredClientContext = (ClientUpdateContext) context;
+                registeredClientContext.getRegisteredClient().setEnabled(false);
                 break;
             case UPDATE:
-                ClientUpdateContext clientUpdateContext = (ClientUpdateContext) context;
-                ClientModel clientModel = clientUpdateContext.getAuthenticatedClient();
-
-                boolean isEnabled = clientModel.isEnabled();
-                boolean newEnabled = clientUpdateContext.getClientToBeUpdated().isEnabled();
+                ClientUpdateContext updateClientContext = (ClientUpdateContext) context;
+                boolean isEnabled = updateClientContext.getClientToBeUpdated().isEnabled();
+                boolean newEnabled = updateClientContext.getProposedClientRepresentation().isEnabled();
 
                 if (!isEnabled && newEnabled) {
                     throw new ClientPolicyException(Errors.NOT_ALLOWED, "Not permitted to enable client");
                 }
+                break;
             default:
                 return;
         }

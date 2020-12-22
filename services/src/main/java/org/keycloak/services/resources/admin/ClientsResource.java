@@ -209,7 +209,7 @@ public class ClientsResource {
             }
 
             //trigger event on client registered
-            session.clientPolicy().triggerOnEvent(new AdminClientRegisteredContext(rep, auth.adminAuth()));
+            session.clientPolicy().triggerOnEvent(new AdminClientRegisteredContext(clientModel, auth.adminAuth()));
 
             ClientValidationUtil.validate(session, clientModel, true, c -> {
                 session.getTransactionManager().setRollbackOnly();

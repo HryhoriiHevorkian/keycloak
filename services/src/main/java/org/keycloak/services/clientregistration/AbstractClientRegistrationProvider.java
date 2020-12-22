@@ -79,7 +79,7 @@ public abstract class AbstractClientRegistrationProvider implements ClientRegist
                 RepresentationToModel.createResourceServer(clientModel, session, true);
             }
 
-            session.clientPolicy().triggerOnEvent(new DynamicClientRegisteredContext(context, auth.getJwt(), realm));
+            session.clientPolicy().triggerOnEvent(new DynamicClientRegisteredContext(clientModel, auth.getJwt(), realm));
             ClientRegistrationPolicyManager.triggerAfterRegister(context, registrationAuth, clientModel);
 
             client = ModelToRepresentation.toRepresentation(clientModel, session);
@@ -165,7 +165,7 @@ public abstract class AbstractClientRegistrationProvider implements ClientRegist
         }
 
         try {
-            session.clientPolicy().triggerOnEvent(new DynamicClientUpdatedContext(context, client, auth.getJwt(), client.getRealm()));
+            session.clientPolicy().triggerOnEvent(new DynamicClientUpdatedContext(client, auth.getJwt(), client.getRealm()));
             ClientRegistrationPolicyManager.triggerAfterUpdate(context, registrationAuth, client);
         } catch (ClientPolicyException cpe) {
             throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);

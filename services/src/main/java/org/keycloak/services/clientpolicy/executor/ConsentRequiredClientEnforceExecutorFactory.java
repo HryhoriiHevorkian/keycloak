@@ -37,7 +37,7 @@ public class ConsentRequiredClientEnforceExecutorFactory implements ClientPolicy
 
     @Override
     public String getHelpText() {
-        return "When present, then newly registered client will be disabled and admin needs to manually enable them";
+        return "When present, then newly registered client will always have 'consentRequired' switch enabled";
     }
 
     @Override

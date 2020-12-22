@@ -2,29 +2,20 @@ package org.keycloak.services.clientpolicy;
 
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
 import org.keycloak.representations.JsonWebToken;
-import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clientregistration.ClientRegistrationContext;
 
 public class DynamicClientRegisteredContext implements ClientUpdateContext {
 
-    private final ClientRegistrationContext context;
+    private final ClientModel registeredClient;
     private JsonWebToken token;
-    private UserModel user;
     private ClientModel client;
 
-    public DynamicClientRegisteredContext(ClientRegistrationContext context,
+    public DynamicClientRegisteredContext(ClientModel registeredClient,
                                           JsonWebToken token, RealmModel realm) {
-        this.context = context;
+        this.registeredClient = registeredClient;
         this.token = token;
-        if (token != null) {
-            if (token.getSubject() != null) {
-                this.user = context.getSession().users().getUserById(token.getSubject(), realm);
-            }
-            if (token.getIssuedFor() != null) {
-                this.client = realm.getClientByClientId(token.getIssuedFor());
-            }
+        if (token != null && token.getIssuedFor() != null) {
+            this.client = realm.getClientByClientId(token.getIssuedFor());
         }
     }
 
@@ -34,18 +25,13 @@ public class DynamicClientRegisteredContext implements ClientUpdateContext {
     }
 
     @Override
-    public ClientRepresentation getProposedClientRepresentation() {
-        return context.getClient();
+    public ClientModel getRegisteredClient() {
+        return registeredClient;
     }
 
     @Override
     public ClientModel getAuthenticatedClient() {
         return client;
-    }
-
-    @Override
-    public UserModel getAuthenticatedUser() {
-        return user;
     }
 
     @Override
