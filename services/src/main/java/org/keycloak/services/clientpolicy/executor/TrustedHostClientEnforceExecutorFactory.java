@@ -14,7 +14,7 @@ import java.util.List;
 
 public class TrustedHostClientEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
-    public static final String PROVIDER_ID = "trusted-hosts-client-enforce-executor";
+    public static final String PROVIDER_ID = "trusted-hosts-enforce-executor";
 
     public static final String TRUSTED_HOSTS = "trusted-hosts";
     public static final String HOST_SENDING_REGISTRATION_REQUEST_MUST_MATCH = "host-sending-registration-request-must-match";

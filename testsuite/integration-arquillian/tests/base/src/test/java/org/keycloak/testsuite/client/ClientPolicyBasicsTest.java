@@ -39,6 +39,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
@@ -84,16 +85,8 @@ import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
+import org.keycloak.services.clientpolicy.condition.*;
 import org.keycloak.services.clientpolicy.executor.*;
-import org.keycloak.services.clientpolicy.condition.ClientAccessTypeConditionFactory;
-import org.keycloak.services.clientpolicy.condition.ClientIpAddressConditionFactory;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
-import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
-import org.keycloak.services.clientpolicy.condition.ClientScopesConditionFactory;
-import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
-import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
-import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
-import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesConditionFactory;
 import org.keycloak.services.clientregistration.policy.impl.ClientScopesClientRegistrationPolicyFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
@@ -105,6 +98,7 @@ import org.keycloak.testsuite.rest.resource.TestingOIDCEndpointsApplicationResou
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
 import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.util.JsonSerialization;
 
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
@@ -113,7 +107,6 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
 import static org.keycloak.testsuite.AbstractTestRealmKeycloakTest.TEST_REALM_NAME;
-import org.keycloak.util.JsonSerialization;
 
 @EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
 public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
@@ -1234,28 +1227,75 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
 
-        createCondition("UpdatingClientSourceRolesCondition", UpdatingClientSourceRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionUpdatingClientSourceRoles(provider, new ArrayList<>(Arrays.asList(AdminRoles.CREATE_CLIENT)));
-        });
-        registerCondition("UpdatingClientSourceRolesCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceRolesCondition");
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) ->
+                                setConditionRegistrationMethods(provider, Arrays.asList(
+                                        UpdatingClientSourceConditionFactory.BY_ANONYMOUS,
+                                        UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER
+                                )));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
 
-        createExecutor("ClientScopesClientRegistrationEnforcerExecutor", ClientScopesClientRegistrationEnforcerExecutorFactory.PROVIDER_ID, null,
+        createExecutor("ClientDisabledClientEnforceExecutor", ClientDisabledClientEnforceExecutorFactory.PROVIDER_ID, null,
                        (ComponentRepresentation provider) -> {
         });
-        registerExecutor("ClientScopesClientRegistrationEnforcerExecutor", policyName);
-        logger.info("... Registered Executor : ClientScopesClientRegistrationEnforcerExecutor");
+        registerExecutor("ClientDisabledClientEnforceExecutor", policyName);
+        logger.info("... Registered Executor : ClientDisabledClientEnforceExecutor");
 
+        //client by admin
         String cAlphaId = null;
-        cAlphaId = createClientByAdmin("Alpha-App", (ClientRepresentation clientRep) -> {});
         try {
-            createClientByAdmin("Betta-App", (ClientRepresentation clientRep) -> {});
-            fail();
-        } catch (ClientPolicyException e) {
-            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+            cAlphaId = createClientByAdmin("Alpha-App", (ClientRepresentation clientRep) -> {
+            });
+            ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+            assertFalse(clientByAdmin.isEnabled());
+
+            try {
+                updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                    clientRep.setEnabled(true);
+                });
+                fail();
+            } catch (BadRequestException e) {
+                assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
+            }
+
+            // Try update disabled client. Should pass
+            updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                clientRep.setEnabled(false);
+            });
         } finally {
             deleteClientByAdmin(cAlphaId);
         }
+
+        //dynamic client
+//        String cBettaId = null;
+//        try {
+//            cBettaId = createClientDynamically("Betta-App", (OIDCClientRepresentation clientRep) -> {
+//            });
+//            ClientRepresentation clientRep = ApiUtil.findClientByClientId(getTestContext().getAdminClient().realm(TEST_REALM_NAME), cBettaId).toRepresentation();
+//            assertFalse(clientRep.isEnabled());
+//
+//            try {
+//            // Try enable client. Should fail
+//            clientRep.setEnabled(true);
+//            reg.update(clientRep);
+//            fail();
+//            } catch (Exception e) {
+//                assertEquals(HttpStatus.SC_BAD_REQUEST, 400);
+//            }
+////            assertFail(ClientRegistrationPoliciesTest.ClientRegOp.UPDATE, clientRep, 403, "Not permitted to enable client");
+////            try {
+////                updateClientDynamically(cBettaId, (OIDCClientRepresentation clientRep) -> {
+////                    clientRep.set(true);
+////                });
+////                fail();
+////            } catch (BadRequestException e) {
+////                assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
+////            }
+//        } finally {
+//            deleteClientDynamically(cBettaId);
+//        }
     }
 
     private void checkMtlsFlow(String password) throws IOException {

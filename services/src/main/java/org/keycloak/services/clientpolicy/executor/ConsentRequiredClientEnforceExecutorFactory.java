@@ -11,7 +11,7 @@ import java.util.List;
 
 public class ConsentRequiredClientEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
-    public static final String PROVIDER_ID = "consent-required-client-enforce-executor";
+    public static final String PROVIDER_ID = "consent-required-enforce-executor";
 
     @Override
     public ClientPolicyExecutorProvider create(KeycloakSession session, ComponentModel model) {

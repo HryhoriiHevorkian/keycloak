@@ -46,7 +46,9 @@ public class UpdatingClientSourceCondition implements ClientPolicyConditionProvi
     public ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
         case REGISTER:
+        case REGISTERED:
         case UPDATE:
+        case UPDATED:
             if (isAuthMethodMatched((ClientUpdateContext)context)) return ClientPolicyVote.YES;
             return ClientPolicyVote.NO;
         default:

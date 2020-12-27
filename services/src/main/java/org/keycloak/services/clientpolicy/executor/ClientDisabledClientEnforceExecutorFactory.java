@@ -11,7 +11,7 @@ import java.util.List;
 
 public class ClientDisabledClientEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
-    public static final String PROVIDER_ID = "client-disabled-client-enforce-executor";
+    public static final String PROVIDER_ID = "disabled-client-enforce-executor";
 
     @Override
     public ClientPolicyExecutorProvider create(KeycloakSession session, ComponentModel model) {
