@@ -52,6 +52,7 @@ public class TrustedHostClientEnforceExecutor implements ClientPolicyExecutorPro
 
                 verifyHost();
                 verifyClientUrls(registerClientContext.getProposedClientRepresentation());
+                break;
             case VIEW:
             case UNREGISTER:
                 verifyHost();

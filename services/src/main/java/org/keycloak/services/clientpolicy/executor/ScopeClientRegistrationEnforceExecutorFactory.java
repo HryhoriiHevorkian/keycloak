@@ -11,7 +11,7 @@ import java.util.List;
 
 public class ScopeClientRegistrationEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
-    public static final String PROVIDER_ID = "scope-client-registration-enforce-executor";
+    public static final String PROVIDER_ID = "scope-client-reg-enforce-executor";
 
     @Override
     public ClientPolicyExecutorProvider create(KeycloakSession session, ComponentModel model) {

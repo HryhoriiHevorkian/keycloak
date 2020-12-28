@@ -45,6 +45,7 @@ public class ProtocolMappersClientEnforceExecutor implements ClientPolicyExecuto
             case UPDATE:
                 ClientUpdateContext registerClientContext = (ClientUpdateContext) context;
                 checkProtocolMappers(registerClientContext.getProposedClientRepresentation());
+                break;
             case REGISTERED:
                 // Remove builtin mappers of unsupported types too
                 ClientUpdateContext registeredClientContext = (ClientUpdateContext) context;
@@ -54,11 +55,9 @@ public class ProtocolMappersClientEnforceExecutor implements ClientPolicyExecuto
                 List<String> allowedMapperProviders = getAllowedMapperProviders();
                 Set<ProtocolMapperModel> createdMappers = registeredClient.getProtocolMappers();
 
-                createdMappers.stream().filter((ProtocolMapperModel mapper) -> {
-
-                    return !allowedMapperProviders.contains(mapper.getProtocolMapper());
-
-                }).forEach((ProtocolMapperModel mapperToRemove) -> {
+                createdMappers.stream().filter(
+                        (ProtocolMapperModel mapper) ->
+                                !allowedMapperProviders.contains(mapper.getProtocolMapper())).forEach((ProtocolMapperModel mapperToRemove) -> {
 
                     logger.debugf("Removing builtin mapper '%s' of type '%s' as type is not permitted", mapperToRemove.getName(), mapperToRemove.getProtocolMapper());
                     registeredClient.removeProtocolMapper(mapperToRemove);
@@ -89,6 +88,6 @@ public class ProtocolMappersClientEnforceExecutor implements ClientPolicyExecuto
     }
 
     private List<String> getAllowedMapperProviders() {
-        return componentModel.getConfig().getList(ProtocolMappersClientEnforceExecutorFactor.ALLOWED_PROTOCOL_MAPPER_TYPES);
+        return componentModel.getConfig().getList(ProtocolMappersClientEnforceExecutorFactory.ALLOWED_PROTOCOL_MAPPER_TYPES);
     }
 }

@@ -17,32 +17,15 @@
 
 package org.keycloak.testsuite.client;
 
-import static org.junit.Assert.*;
-import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
-import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
-
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.function.Consumer;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.Response;
-
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.impl.client.CloseableHttpClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.hamcrest.Matchers;
@@ -52,7 +35,6 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.adapters.AdapterUtils;
 import org.keycloak.admin.client.resource.ClientResource;
-import org.keycloak.admin.client.resource.ClientScopesResource;
 import org.keycloak.authentication.authenticators.client.ClientIdAndSecretAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientSecretAuthenticator;
@@ -76,6 +58,7 @@ import org.keycloak.models.Constants;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.mappers.HardcodedRole;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.RefreshToken;
@@ -87,7 +70,6 @@ import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.*;
 import org.keycloak.services.clientpolicy.executor.*;
-import org.keycloak.services.clientregistration.policy.impl.ClientScopesClientRegistrationPolicyFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -100,13 +82,20 @@ import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.util.JsonSerialization;
 
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
+import java.util.function.Consumer;
 
+import static org.junit.Assert.*;
 import static org.keycloak.testsuite.AbstractTestRealmKeycloakTest.TEST_REALM_NAME;
+import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
+import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
 
 @EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
 public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
@@ -863,366 +852,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     @Test
-    public void testClientAccessTypeCondition() throws ClientRegistrationException, ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("ClientAccessTypeCondition", ClientAccessTypeConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionClientAccessType(provider, new ArrayList<>(Arrays.asList(ClientAccessTypeConditionFactory.TYPE_CONFIDENTIAL)));
-        });
-        registerCondition("ClientAccessTypeCondition", policyName);
-        logger.info("... Registered Condition : ClientAccessTypeCondition");
-
-        createExecutor("SecureSessionEnforceExecutor", SecureSessionEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-        });
-        registerExecutor("SecureSessionEnforceExecutor", policyName);
-        logger.info("... Registered Executor : SecureSessionEnforceExecutor");
-
-        String clientAlphaId = "Alpha-App";
-        String clientAlphaSecret = "secretAlpha";
-        String cAlphaId = createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
-            clientRep.setSecret(clientAlphaSecret);
-            clientRep.setBearerOnly(Boolean.FALSE);
-            clientRep.setPublicClient(Boolean.FALSE);
-        });
-
-        String clientBetaId = "Beta-App";
-        String cBetaId = createClientByAdmin(clientBetaId, (ClientRepresentation clientRep) -> {
-            clientRep.setBearerOnly(Boolean.FALSE);
-            clientRep.setPublicClient(Boolean.TRUE);
-        });
-
-        try {
-            successfulLoginAndLogout(clientBetaId, null);
-            failLoginWithoutNonce(clientAlphaId);
-        } finally {
-            deleteClientByAdmin(cAlphaId);
-            deleteClientByAdmin(cBetaId);
-        }
-    }
-
-    @Test
-    public void testSecureResponseTypeEnforceExecutor() throws ClientRegistrationException, ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("ClientAccessTypeCondition", ClientAccessTypeConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionClientAccessType(provider, new ArrayList<>(Arrays.asList(ClientAccessTypeConditionFactory.TYPE_CONFIDENTIAL)));
-        });
-        registerCondition("ClientAccessTypeCondition", policyName);
-        logger.info("... Registered Condition : ClientAccessTypeCondition");
-
-        createExecutor("SecureResponseTypeEnforceExecutor", SecureResponseTypeEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-        });
-        registerExecutor("SecureResponseTypeEnforceExecutor", policyName);
-        logger.info("... Registered Executor : SecureResponseTypeEnforceExecutor");
-
-        String clientAlphaId = "Alpha-App";
-        String clientAlphaSecret = "secretAlpha";
-        String cAlphaId = createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
-            clientRep.setSecret(clientAlphaSecret);
-            clientRep.setBearerOnly(Boolean.FALSE);
-            clientRep.setPublicClient(Boolean.FALSE);
-        });
-
-        String clientBetaId = "Beta-App";
-        String cBetaId = createClientByAdmin(clientBetaId, (ClientRepresentation clientRep) -> {
-            clientRep.setBearerOnly(Boolean.FALSE);
-            clientRep.setPublicClient(Boolean.TRUE);
-        });
-
-        try {
-            successfulLoginAndLogout(clientBetaId, null);
-            failLoginWithoutSecureResponseType(clientAlphaId);
-        } finally {
-            deleteClientByAdmin(cAlphaId);
-            deleteClientByAdmin(cBetaId);
-        }
-    }
-
-    @Test
-    public void testUpdatingClientSourceHostsCondition() throws ClientRegistrationException, ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("UpdatingClientSourceHostsCondition", UpdatingClientSourceHostsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionUpdatingClientSourceHosts(provider, new ArrayList<>(Arrays.asList("example.com", "localhost:8543")));
-        });
-        registerCondition("UpdatingClientSourceHostsCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceHostsCondition");
-
-        createExecutor("PKCEEnforceExecutor", PKCEEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setExecutorAugmentDeactivate(provider);
-        });
-        registerExecutor("PKCEEnforceExecutor", policyName);
-        logger.info("... Registered Executor : PKCEEnforceExecutor");
-
-        String clientAlphaId = "Alpha-App";
-        String clientAlphaSecret = "secretAlpha";
-        try {
-            createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
-                clientRep.setSecret(clientAlphaSecret);
-            });
-            fail();
-        } catch (ClientPolicyException e) {
-            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
-        }
-    }
-
-    @Test
-    public void testUpdatingClientSourceGroupsCondition() throws ClientRegistrationException, ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("UpdatingClientSourceGroupsCondition", UpdatingClientSourceGroupsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionUpdatingClientSourceGroups(provider, new ArrayList<>(Arrays.asList("topGroup")));
-        });
-        registerCondition("UpdatingClientSourceGroupsCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceGroupsCondition");
-
-        createExecutor("SecureClientAuthEnforceExecutor", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(JWTClientAuthenticator.PROVIDER_ID)));
-        });
-        registerExecutor("SecureClientAuthEnforceExecutor", policyName);
-        logger.info("... Registered Executor : SecureClientAuthEnforceExecutor");
-
-        String cid = null;
-        try {
-            try {
-                authCreateClients();
-                createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {});
-                fail();
-            } catch (ClientRegistrationException e) {
-                assertEquals("Failed to send request", e.getMessage());
-            }
-            authManageClients();
-            cid = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
-            });
-        } finally {
-            deleteClientByAdmin(cid);
-
-        }
-    }
-
-    @Test
-    public void testUpdatingClientSourceRolesCondition() throws ClientRegistrationException, ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("UpdatingClientSourceRolesCondition", UpdatingClientSourceRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionUpdatingClientSourceRoles(provider, new ArrayList<>(Arrays.asList(AdminRoles.CREATE_CLIENT)));
-        });
-        registerCondition("UpdatingClientSourceRolesCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceRolesCondition");
-
-        createExecutor("SecureClientAuthEnforceExecutor", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(JWTClientAuthenticator.PROVIDER_ID)));
-        });
-        registerExecutor("SecureClientAuthEnforceExecutor", policyName);
-        logger.info("... Registered Executor : SecureClientAuthEnforceExecutor");
-
-        String cid = null;
-        try {
-            try {
-                authCreateClients();
-                createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {});
-                fail();
-            } catch (ClientRegistrationException e) {
-                assertEquals("Failed to send request", e.getMessage());
-            }
-            authManageClients();
-            cid = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
-            });
-        } finally {
-            deleteClientByAdmin(cid);
-        }
-    }
-
-    @Test
-    public void testMaxClientsClientRegistrationEnforceExecutor() throws ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        int clientsCount = adminClient.realm(TEST_REALM_NAME).clients().findAll().size();
-        int newClientsLimit = clientsCount + 1;
-
-        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, Collections.singletonList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER));
-        });
-        registerCondition("UpdatingClientSourceCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceCondition");
-
-        createExecutor("MaxClientsClientRegistrationEnforceExecutor", MaxClientsClientRegistrationEnforceExecutorFactory.PROVIDER_ID, null,
-                       (ComponentRepresentation provider) -> provider.getConfig().putSingle(MaxClientsClientRegistrationEnforceExecutorFactory.MAX_CLIENTS, String.valueOf(newClientsLimit)));
-
-        registerExecutor("MaxClientsClientRegistrationEnforceExecutor", policyName);
-        logger.info("... Registered Executor : MaxClientsClientRegistrationEnforceExecutor");
-
-        String cAlphaId = null;
-        cAlphaId = createClientByAdmin("Alpha-maxClients-App", (ClientRepresentation clientRep) -> {});
-        try {
-            createClientByAdmin("Betta-maxClients-App", (ClientRepresentation clientRep) -> {});
-            fail();
-        } catch (ClientPolicyException e) {
-            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
-        } finally {
-            deleteClientByAdmin(cAlphaId);
-        }
-    }
-
-    @Test
-    public void testClientScopesClientRegistrationEnforcerExecutor() throws ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
-                        (ComponentRepresentation provider) -> setConditionRegistrationMethods(provider, Collections.singletonList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER)));
-        registerCondition("UpdatingClientSourceCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceCondition");
-
-        createExecutor("ClientScopesClientRegistrationEnforcerExecutor", ClientScopesClientRegistrationEnforcerExecutorFactory.PROVIDER_ID, null,
-                       (ComponentRepresentation provider) -> provider.getConfig().putSingle(ClientScopesClientRegistrationPolicyFactory.ALLOWED_CLIENT_SCOPES, "foo"));
-
-        registerExecutor("ClientScopesClientRegistrationEnforcerExecutor", policyName);
-        logger.info("... Registered Executor : ClientScopesClientRegistrationEnforcerExecutor");
-
-        ClientScopesResource clientScopesResource = adminClient.realm(REALM_NAME).clientScopes();
-        //create default client scope
-        ClientScopeRepresentation fooClientScope = new ClientScopeRepresentation();
-        fooClientScope.setName("foo");
-        Response resp = clientScopesResource.create(fooClientScope);
-        String fooClientScopeId = ApiUtil.getCreatedId(resp);
-        adminClient.realm(REALM_NAME).addDefaultDefaultClientScope(fooClientScopeId);
-
-        //create optional client scope
-        ClientScopeRepresentation hazClientScope = new ClientScopeRepresentation();
-        hazClientScope.setName("haz");
-        resp = clientScopesResource.create(hazClientScope);
-        String hazClientScopeId = ApiUtil.getCreatedId(resp);
-        adminClient.realm(REALM_NAME).addDefaultOptionalClientScope(hazClientScopeId);
-
-        String cAlphaId = null;
-        try {
-            //create client with allowed client scopes
-            cAlphaId = createClientByAdmin("Alpha-clientScopes-App", (ClientRepresentation clientRep) -> {
-                clientRep.setDefaultClientScopes(Collections.singletonList("foo"));
-                clientRep.setOptionalClientScopes(Collections.singletonList("haz"));
-            });
-
-            try {
-                //update client with no allowed client scopes
-                updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
-                    clientRep.setDefaultClientScopes(Collections.singletonList("bar"));
-                    clientRep.setOptionalClientScopes(Collections.singletonList("bar"));
-                });
-                fail();
-            } catch (BadRequestException bre) {
-                ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
-                assertTrue(clientByAdmin.getDefaultClientScopes().contains("foo"));
-                assertTrue(clientByAdmin.getOptionalClientScopes().contains("haz"));
-            }
-
-            try {
-                //create client with no allowed client scopes
-                createClientByAdmin("Betta-clientScopes-App", (ClientRepresentation clientRep) -> {
-                    clientRep.setDefaultClientScopes(Collections.singletonList("bar"));
-                    clientRep.setOptionalClientScopes(Collections.singletonList("bar"));
-                });
-                fail();
-            } catch (ClientPolicyException e) {
-                assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
-            }
-        } finally {
-            deleteClientByAdmin(cAlphaId);
-            adminClient.realm(REALM_NAME).removeDefaultDefaultClientScope(fooClientScopeId);
-            clientScopesResource.get(fooClientScopeId).remove();
-            adminClient.realm(REALM_NAME).removeDefaultOptionalClientScope(hazClientScopeId);
-            clientScopesResource.get(hazClientScopeId).remove();
-        }
-    }
-
-    @Test
-    public void testSecureRedirectUriEnforceExecutor() throws ClientRegistrationException, ClientPolicyException {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(
-                    UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
-                    UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
-                    UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN)));
-        });
-        registerCondition("UpdatingClientSourceCondition", policyName);
-        logger.info("... Registered Condition : UpdatingClientSourceCondition");
-
-        createExecutor("SecureRedirectUriEnforceExecutor", SecureRedirectUriEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-        });
-        registerExecutor("SecureRedirectUriEnforceExecutor", policyName);
-        logger.info("... Registered Executor : SecureRedirectUriEnforceExecutor");
-
-        String cid = null;
-        try {
-            try {
-                createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
-                    clientRep.setRedirectUris(Collections.singletonList("http://newredirect"));
-                });
-                fail();
-            } catch (ClientRegistrationException e) {
-                assertEquals("Failed to send request", e.getMessage());
-            }
-            updateCondition("UpdatingClientSourceCondition", (ComponentRepresentation provider) -> {
-                setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(
-                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
-                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN)));
-            });
-            cid = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
-            });
-        } finally {
-            deleteClientByAdmin(cid);
-        }
-    }
-
-    @Test
-    public void testHolderOfKeyEnforceExecutor() throws Exception {
-        String policyName = "MyPolicy";
-        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
-        logger.info("... Created Policy : " + policyName);
-
-        createCondition("ClientRolesCondition", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionClientRoles(provider, Collections.singletonList("sample-client-role"));
-        });
-        registerCondition("ClientRolesCondition", policyName);
-        logger.info("... Registered Condition : ClientRolesCondition");
-
-        createExecutor("HolderOfKeyEnforceExecutor", HolderOfKeyEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setExecutorAugmentActivate(provider);
-        });
-        registerExecutor("HolderOfKeyEnforceExecutor", policyName);
-        logger.info("... Registered Executor : HolderOfKeyEnforceExecutor");
-
-        String clientName = "Zahlungs-App";
-        String userPassword = "password";
-        String clientId = createClientDynamically(clientName, (OIDCClientRepresentation clientRep) -> {
-            clientRep.setTokenEndpointAuthMethod(OIDCLoginProtocol.TLS_CLIENT_AUTH);
-        });
-
-        try {
-            checkMtlsFlow(userPassword);
-        } finally {
-            deleteClientByAdmin(clientId);
-        }
-    }
-
-    @Test
-    public void testClientDisabledClientEnforceExecutor() throws ClientPolicyException {
+    public void testClientDisabledClientEnforceExecutor() throws ClientPolicyException, ClientRegistrationException {
         String policyName = "MyPolicy";
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
@@ -1231,22 +861,23 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
                         (ComponentRepresentation provider) ->
                                 setConditionRegistrationMethods(provider, Arrays.asList(
                                         UpdatingClientSourceConditionFactory.BY_ANONYMOUS,
+                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
                                         UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
-                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER
+                                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN
                                 )));
         registerCondition("UpdatingClientSourceCondition", policyName);
         logger.info("... Registered Condition : UpdatingClientSourceCondition");
 
         createExecutor("ClientDisabledClientEnforceExecutor", ClientDisabledClientEnforceExecutorFactory.PROVIDER_ID, null,
                        (ComponentRepresentation provider) -> {
-        });
+                       });
         registerExecutor("ClientDisabledClientEnforceExecutor", policyName);
         logger.info("... Registered Executor : ClientDisabledClientEnforceExecutor");
 
         //client by admin
         String cAlphaId = null;
         try {
-            cAlphaId = createClientByAdmin("Alpha-App", (ClientRepresentation clientRep) -> {
+            cAlphaId = createClientByAdmin("Alpha-disabled-App", (ClientRepresentation clientRep) -> {
             });
             ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
             assertFalse(clientByAdmin.isEnabled());
@@ -1260,7 +891,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
                 assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
             }
 
-            // Try update disabled client. Should pass
+            // Try to update disabled client. Should pass
             updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
                 clientRep.setEnabled(false);
             });
@@ -1269,33 +900,270 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
 
         //dynamic client
-//        String cBettaId = null;
-//        try {
-//            cBettaId = createClientDynamically("Betta-App", (OIDCClientRepresentation clientRep) -> {
-//            });
-//            ClientRepresentation clientRep = ApiUtil.findClientByClientId(getTestContext().getAdminClient().realm(TEST_REALM_NAME), cBettaId).toRepresentation();
-//            assertFalse(clientRep.isEnabled());
+        String cBettaId = null;
+        try {
+            cBettaId = createClientDynamically("Betta-disabled-App", (OIDCClientRepresentation clientRep) -> {
+            });
+            ClientRepresentation clientRep = reg.get(cBettaId);
+            assertFalse(clientRep.isEnabled());
+
+            try {
+                // Try to enable client. Should fail
+                clientRep.setEnabled(true);
+                reg.update(clientRep);
+                fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+            // Try to update disabled client. Should pass
+            clientRep.setEnabled(false);
+            reg.update(clientRep);
+        } finally {
+            deleteClientByAdmin(cBettaId);
+        }
+    }
+
+    @Test
+    public void testConsentRequiredClientEnforceExecutor() throws ClientPolicyException, ClientRegistrationException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) ->
+                                setConditionRegistrationMethods(provider, Arrays.asList(
+                                        UpdatingClientSourceConditionFactory.BY_ANONYMOUS,
+                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                                        UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN
+                                )));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("ConsentRequiredClientEnforceExecutor", ConsentRequiredClientEnforceExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> {
+                       });
+        registerExecutor("ConsentRequiredClientEnforceExecutor", policyName);
+        logger.info("... Registered Executor : ConsentRequiredClientEnforceExecutor");
+
+        //client by admin
+        String cAlphaId = null;
+        try {
+            cAlphaId = createClientByAdmin("Alpha-consentRequired-App", (ClientRepresentation clientRep) -> {
+            });
+            ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+            assertFalse(clientByAdmin.isConsentRequired());
+
+            try {
+                updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                    clientRep.setConsentRequired(true);
+                });
+                fail();
+            } catch (BadRequestException e) {
+                assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
+            }
+
+            // Try to update consentRequired of client. Should pass
+            updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                clientRep.setConsentRequired(false);
+            });
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+
+        //dynamic client
+        String cBettaId = null;
+        try {
+            cBettaId = createClientDynamically("Betta-consentRequired-App", (OIDCClientRepresentation clientRep) -> {
+            });
+            ClientRepresentation clientRep = reg.get(cBettaId);
+            assertFalse(clientRep.isConsentRequired());
+
+            try {
+                // Try to setConsentRequired client. Should fail
+                clientRep.setConsentRequired(true);
+                reg.update(clientRep);
+                fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+            // Try to setConsentRequired client. Should pass
+            clientRep.setConsentRequired(false);
+            reg.update(clientRep);
+        } finally {
+            deleteClientByAdmin(cBettaId);
+        }
+    }
+
+    @Test
+    public void testScopeClientRegistrationEnforceExecutor() throws ClientPolicyException, ClientRegistrationException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) ->
+                                setConditionRegistrationMethods(provider, Arrays.asList(
+                                        UpdatingClientSourceConditionFactory.BY_ANONYMOUS,
+                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                                        UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN
+                                )));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("ScopeClientRegistrationEnforceExecutor", ScopeClientRegistrationEnforceExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> {
+                       });
+        registerExecutor("ScopeClientRegistrationEnforceExecutor", policyName);
+        logger.info("... Registered Executor : ScopeClientRegistrationEnforceExecutor");
+
+        //client by admin
+        String cAlphaId = null;
+        try {
+            cAlphaId = createClientByAdmin("Alpha-fullScopeAllowed-App", (ClientRepresentation clientRep) -> {
+            });
+            ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+            assertFalse(clientByAdmin.isFullScopeAllowed());
+
+            try {
+                updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                    clientRep.setFullScopeAllowed(true);
+                });
+                fail();
+            } catch (BadRequestException e) {
+                assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
+            }
+
+            // Try to update consentRequired of client. Should pass
+            updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                clientRep.setFullScopeAllowed(false);
+            });
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+
+        //dynamic client
+        String cBettaId = null;
+        try {
+            cBettaId = createClientDynamically("Betta-fullScopeAllowed-App", (OIDCClientRepresentation clientRep) -> {
+            });
+            ClientRepresentation clientRep = reg.get(cBettaId);
+            assertFalse(clientRep.isFullScopeAllowed());
+
+            try {
+                // Try to setFullScopeAllowed client. Should fail
+                clientRep.setFullScopeAllowed(true);
+                reg.update(clientRep);
+                fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+            // Try to setFullScopeAllowed client. Should pass
+            clientRep.setFullScopeAllowed(false);
+            reg.update(clientRep);
+        } finally {
+            deleteClientByAdmin(cBettaId);
+        }
+    }
+
+    @Test
+    public void testProtocolMappersClientEnforceExecutor() throws ClientPolicyException, ClientRegistrationException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) ->
+                                setConditionRegistrationMethods(provider, Arrays.asList(
+                                        UpdatingClientSourceConditionFactory.BY_ANONYMOUS,
+                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                                        UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN
+                                )));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("ProtocolMappersClientEnforceExecutor", ProtocolMappersClientEnforceExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> {
+                       });
+        registerExecutor("ProtocolMappersClientEnforceExecutor", policyName);
+        logger.info("... Registered Executor : ProtocolMappersClientEnforceExecutor");
+
+        //client by admin
+        String cAlphaId = null;
+        try {
+            try {
+            createClientByAdmin("Alpha-protocolMappers-App", (ClientRepresentation clientRep) -> {
+                clientRep.setProtocolMappers(Collections.singletonList(createHardcodedMapperRep()));
+            });
+            } catch (ClientPolicyException e) {
+                assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+            }
+
+            updateExecutor("ProtocolMappersClientEnforceExecutor", (ComponentRepresentation provider) -> {
+                provider.getConfig().add(ProtocolMappersClientEnforceExecutorFactory.ALLOWED_PROTOCOL_MAPPER_TYPES, "oidc-hardcoded-role-mapper");
+            });
+
+            cAlphaId = createClientByAdmin("Alpha-protocolMappers-App", (ClientRepresentation clientRep) -> {
+                clientRep.setProtocolMappers(Collections.singletonList(createHardcodedMapperRep()));
+            });
+            assertNotNull(cAlphaId);
+
+            ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+            assertEquals(1, clientByAdmin.getProtocolMappers().size());
+
+            updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {});
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+
+        //dynamic client
+//        updateExecutor("ProtocolMappersClientEnforceExecutor", (ComponentRepresentation provider) -> {
+//            provider.getConfig().remove(ProtocolMappersClientEnforceExecutorFactory.ALLOWED_PROTOCOL_MAPPER_TYPES);
+//        });
 //
+//        String cBettaId = null;
+//        String cBettaName = "Betta-protocolMappers-App";
+//
+//        ClientRepresentation dynamicClient = new ClientRepresentation();
+//        dynamicClient.setClientId(cBettaName);
+//        dynamicClient.setName(cBettaName);
+//        dynamicClient.setProtocol("openid-connect");
+//        dynamicClient.setBearerOnly(Boolean.FALSE);
+//        dynamicClient.setPublicClient(Boolean.FALSE);
+//        dynamicClient.setServiceAccountsEnabled(Boolean.TRUE);
+//        dynamicClient.setRedirectUris(Collections.singletonList("https://localhost:8543/auth/realms/master/app/auth"));
+//        dynamicClient.setProtocolMappers(Collections.singletonList(createHardcodedMapperRep()));
+//        try {
 //            try {
-//            // Try enable client. Should fail
-//            clientRep.setEnabled(true);
-//            reg.update(clientRep);
-//            fail();
-//            } catch (Exception e) {
-//                assertEquals(HttpStatus.SC_BAD_REQUEST, 400);
+//                reg.create(dynamicClient);
+//            } catch (ClientRegistrationException e) {
+//                assertEquals("Failed to send request", e.getMessage());
 //            }
-////            assertFail(ClientRegistrationPoliciesTest.ClientRegOp.UPDATE, clientRep, 403, "Not permitted to enable client");
-////            try {
-////                updateClientDynamically(cBettaId, (OIDCClientRepresentation clientRep) -> {
-////                    clientRep.set(true);
-////                });
-////                fail();
-////            } catch (BadRequestException e) {
-////                assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
-////            }
+//
+//            updateExecutor("ProtocolMappersClientEnforceExecutor", (ComponentRepresentation provider) -> {
+//                provider.getConfig().add(ProtocolMappersClientEnforceExecutorFactory.ALLOWED_PROTOCOL_MAPPER_TYPES, "oidc-hardcoded-role-mapper");
+//            });
+//
+//            ClientRepresentation clientRepresentation = reg.create(dynamicClient);
+//            ClientRepresentation retrievedDynamicClient = reg.get(cBettaId);
+//            assertEquals(1, retrievedDynamicClient.getProtocolMappers().size());
+//
+//            retrievedDynamicClient.setProtocolMappers(Collections.singletonList(createHardcodedMapperRep()));
+//            reg.update(retrievedDynamicClient);
 //        } finally {
-//            deleteClientDynamically(cBettaId);
+//            deleteClientByAdmin(cBettaId);
 //        }
+    }
+
+    private ProtocolMapperRepresentation createHardcodedMapperRep() {
+        ProtocolMapperRepresentation protocolMapper = new ProtocolMapperRepresentation();
+        protocolMapper.setName("Hardcoded foo role");
+        protocolMapper.setProtocolMapper(HardcodedRole.PROVIDER_ID);
+        protocolMapper.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
+        protocolMapper.getConfig().put(HardcodedRole.ROLE_CONFIG, "foo-role");
+        return protocolMapper;
     }
 
     private void checkMtlsFlow(String password) throws IOException {

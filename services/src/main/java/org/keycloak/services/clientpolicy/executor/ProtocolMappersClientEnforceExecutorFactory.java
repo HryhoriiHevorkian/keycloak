@@ -12,9 +12,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ProtocolMappersClientEnforceExecutorFactor implements ClientPolicyExecutorProviderFactory {
+public class ProtocolMappersClientEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
-    public static final String PROVIDER_ID = "protocol-mappers-client-enforce-executor";
+    public static final String PROVIDER_ID = "protocol-mappers-enforce-executor";
     public static final String ALLOWED_PROTOCOL_MAPPER_TYPES = "allowed-protocol-mapper-types";
 
     private final List<ProviderConfigProperty> configProperties = new LinkedList<>();
