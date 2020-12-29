@@ -10,7 +10,6 @@ import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
-import org.keycloak.services.clientregistration.policy.impl.TrustedHostClientRegistrationPolicyFactory;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;
@@ -92,12 +91,12 @@ public class TrustedHostClientEnforceExecutor implements ClientPolicyExecutorPro
     }
 
     private List<String> getTrustedHosts() {
-        List<String> trustedHostsConfig = componentModel.getConfig().getList(TrustedHostClientRegistrationPolicyFactory.TRUSTED_HOSTS);
+        List<String> trustedHostsConfig = componentModel.getConfig().getList(TrustedHostClientEnforceExecutorFactory.TRUSTED_HOSTS);
         return trustedHostsConfig.stream().filter((String hostname) -> !hostname.startsWith("*.")).collect(Collectors.toList());
     }
 
     protected List<String> getTrustedDomains() {
-        List<String> trustedHostsConfig = componentModel.getConfig().getList(TrustedHostClientRegistrationPolicyFactory.TRUSTED_HOSTS);
+        List<String> trustedHostsConfig = componentModel.getConfig().getList(TrustedHostClientEnforceExecutorFactory.TRUSTED_HOSTS);
         List<String> domains = new LinkedList<>();
 
         for (String hostname : trustedHostsConfig) {

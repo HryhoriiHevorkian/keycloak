@@ -1068,7 +1068,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     @Test
-    public void testProtocolMappersClientEnforceExecutor() throws ClientPolicyException, ClientRegistrationException {
+    public void testProtocolMappersClientEnforceExecutor() throws ClientPolicyException {
         String policyName = "MyPolicy";
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
@@ -1117,44 +1117,80 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         } finally {
             deleteClientByAdmin(cAlphaId);
         }
+    }
+
+    @Test
+    public void testTrustedHostClientEnforceExecutor() throws ClientPolicyException, ClientRegistrationException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) ->
+                                setConditionRegistrationMethods(provider, Arrays.asList(
+                                        UpdatingClientSourceConditionFactory.BY_ANONYMOUS,
+                                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                                        UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN
+                                )));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("TrustedHostClientEnforceExecutor", TrustedHostClientEnforceExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> {
+                           provider.getConfig().putSingle(TrustedHostClientEnforceExecutorFactory.HOST_SENDING_REGISTRATION_REQUEST_MUST_MATCH, "false");
+                           provider.getConfig().putSingle(TrustedHostClientEnforceExecutorFactory.CLIENT_URIS_MUST_MATCH, "true");
+                           provider.getConfig().put(TrustedHostClientEnforceExecutorFactory.TRUSTED_HOSTS, Arrays.asList("localhost", "www.host.com", "*.example.com"));
+                       });
+        registerExecutor("TrustedHostClientEnforceExecutor", policyName);
+        logger.info("... Registered Executor : TrustedHostClientEnforceExecutor");
+
+        //client by admin
+        String cAlphaId = createClientByAdmin("Alpha-trustedHost-App", (ClientRepresentation clientRep) -> {
+            clientRep.setBaseUrl("http://www.host.com");
+            clientRep.setRedirectUris(Collections.singletonList("http://www.example.com"));
+        });
+        assertNotNull(cAlphaId);
+
+        ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+        assertEquals("http://www.host.com", clientByAdmin.getBaseUrl());
+        assertEquals(Collections.singletonList("http://www.example.com"), clientByAdmin.getRedirectUris());
+        updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+        });
+
+        try {
+            updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                clientRep.setBaseUrl("http://www.host.com1");
+                clientRep.setRedirectUris(Collections.singletonList("http://www.example.com1"));
+            });
+            fail();
+        } catch (BadRequestException e) {
+            assertEquals(HttpStatus.SC_BAD_REQUEST, e.getResponse().getStatus());
+        }
+
+        deleteClientByAdmin(cAlphaId);
 
         //dynamic client
-//        updateExecutor("ProtocolMappersClientEnforceExecutor", (ComponentRepresentation provider) -> {
-//            provider.getConfig().remove(ProtocolMappersClientEnforceExecutorFactory.ALLOWED_PROTOCOL_MAPPER_TYPES);
-//        });
-//
-//        String cBettaId = null;
-//        String cBettaName = "Betta-protocolMappers-App";
-//
-//        ClientRepresentation dynamicClient = new ClientRepresentation();
-//        dynamicClient.setClientId(cBettaName);
-//        dynamicClient.setName(cBettaName);
-//        dynamicClient.setProtocol("openid-connect");
-//        dynamicClient.setBearerOnly(Boolean.FALSE);
-//        dynamicClient.setPublicClient(Boolean.FALSE);
-//        dynamicClient.setServiceAccountsEnabled(Boolean.TRUE);
-//        dynamicClient.setRedirectUris(Collections.singletonList("https://localhost:8543/auth/realms/master/app/auth"));
-//        dynamicClient.setProtocolMappers(Collections.singletonList(createHardcodedMapperRep()));
-//        try {
-//            try {
-//                reg.create(dynamicClient);
-//            } catch (ClientRegistrationException e) {
-//                assertEquals("Failed to send request", e.getMessage());
-//            }
-//
-//            updateExecutor("ProtocolMappersClientEnforceExecutor", (ComponentRepresentation provider) -> {
-//                provider.getConfig().add(ProtocolMappersClientEnforceExecutorFactory.ALLOWED_PROTOCOL_MAPPER_TYPES, "oidc-hardcoded-role-mapper");
-//            });
-//
-//            ClientRepresentation clientRepresentation = reg.create(dynamicClient);
-//            ClientRepresentation retrievedDynamicClient = reg.get(cBettaId);
-//            assertEquals(1, retrievedDynamicClient.getProtocolMappers().size());
-//
-//            retrievedDynamicClient.setProtocolMappers(Collections.singletonList(createHardcodedMapperRep()));
-//            reg.update(retrievedDynamicClient);
-//        } finally {
-//            deleteClientByAdmin(cBettaId);
-//        }
+        String cBettaId = createClientDynamically("Betta-trustedHost-App", (OIDCClientRepresentation clientRep) -> {
+            clientRep.setRedirectUris(Collections.singletonList("http://www.example.com"));
+        });
+        assertNotNull(cBettaId);
+
+        OIDCClientRepresentation clientDynamically = getClientDynamically(cBettaId);
+        assertEquals(Collections.singletonList("http://www.example.com"), clientDynamically.getRedirectUris());
+        updateClientByAdmin(cBettaId, (ClientRepresentation clientRep) -> {
+        });
+
+        try {
+            updateClientDynamically(cBettaId, (OIDCClientRepresentation clientRep) -> {
+                clientRep.setRedirectUris(Collections.singletonList("http://www.example.com1"));
+            });
+            fail();
+        } catch (ClientRegistrationException e) {
+            assertEquals("Failed to send request", e.getMessage());
+        }
+
+        deleteClientByAdmin(cBettaId);
     }
 
     private ProtocolMapperRepresentation createHardcodedMapperRep() {
