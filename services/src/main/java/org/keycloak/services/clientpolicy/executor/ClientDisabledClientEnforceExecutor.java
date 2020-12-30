@@ -39,6 +39,9 @@ public class ClientDisabledClientEnforceExecutor implements ClientPolicyExecutor
                 break;
             case UPDATE:
                 ClientUpdateContext updateClientContext = (ClientUpdateContext) context;
+                if (updateClientContext.getProposedClientRepresentation().isEnabled() == null) {
+                    return;
+                }
                 boolean isEnabled = updateClientContext.getClientToBeUpdated().isEnabled();
                 boolean newEnabled = updateClientContext.getProposedClientRepresentation().isEnabled();
 

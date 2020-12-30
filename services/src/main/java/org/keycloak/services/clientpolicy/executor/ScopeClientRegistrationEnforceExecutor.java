@@ -39,6 +39,14 @@ public class ScopeClientRegistrationEnforceExecutor implements ClientPolicyExecu
                 break;
             case UPDATE:
                 ClientUpdateContext updateClientContext = (ClientUpdateContext) context;
+
+                if (updateClientContext.getClientToBeUpdated() == null) {
+                    return;
+                }
+                if (updateClientContext.getProposedClientRepresentation().isFullScopeAllowed() == null) {
+                    return;
+                }
+
                 boolean fullScopeAllowed = updateClientContext.getClientToBeUpdated().isFullScopeAllowed();
                 boolean newFullScopeAllowed = updateClientContext.getProposedClientRepresentation().isFullScopeAllowed();
 

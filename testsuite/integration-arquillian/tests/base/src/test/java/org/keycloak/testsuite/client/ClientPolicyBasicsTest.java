@@ -952,11 +952,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             cAlphaId = createClientByAdmin("Alpha-consentRequired-App", (ClientRepresentation clientRep) -> {
             });
             ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
-            assertFalse(clientByAdmin.isConsentRequired());
+            assertTrue(clientByAdmin.isConsentRequired());
 
             try {
                 updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
-                    clientRep.setConsentRequired(true);
+                    clientRep.setConsentRequired(false);
                 });
                 fail();
             } catch (BadRequestException e) {
@@ -965,7 +965,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
             // Try to update consentRequired of client. Should pass
             updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
-                clientRep.setConsentRequired(false);
+                clientRep.setConsentRequired(true);
             });
         } finally {
             deleteClientByAdmin(cAlphaId);
@@ -977,18 +977,18 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             cBettaId = createClientDynamically("Betta-consentRequired-App", (OIDCClientRepresentation clientRep) -> {
             });
             ClientRepresentation clientRep = reg.get(cBettaId);
-            assertFalse(clientRep.isConsentRequired());
+            assertTrue(clientRep.isConsentRequired());
 
             try {
                 // Try to setConsentRequired client. Should fail
-                clientRep.setConsentRequired(true);
+                clientRep.setConsentRequired(false);
                 reg.update(clientRep);
                 fail();
             } catch (ClientRegistrationException e) {
                 assertEquals("Failed to send request", e.getMessage());
             }
             // Try to setConsentRequired client. Should pass
-            clientRep.setConsentRequired(false);
+            clientRep.setConsentRequired(true);
             reg.update(clientRep);
         } finally {
             deleteClientByAdmin(cBettaId);

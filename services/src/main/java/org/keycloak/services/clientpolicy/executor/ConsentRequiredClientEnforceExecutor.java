@@ -35,14 +35,23 @@ public class ConsentRequiredClientEnforceExecutor implements ClientPolicyExecuto
         switch (context.getEvent()) {
             case REGISTERED:
                 ClientUpdateContext registeredClientContext = (ClientUpdateContext) context;
-                registeredClientContext.getRegisteredClient().setConsentRequired(false);
+                registeredClientContext.getRegisteredClient().setConsentRequired(true);
                 break;
             case UPDATE:
                 ClientUpdateContext clientUpdateContext = (ClientUpdateContext) context;
+                ClientUpdateContext updateClientContext = (ClientUpdateContext) context;
+
+                if (updateClientContext.getProposedClientRepresentation().isConsentRequired() == null) {
+                    return;
+                }
+                if (updateClientContext.getClientToBeUpdated() == null) {
+                    return;
+                }
+
                 boolean consentRequired = clientUpdateContext.getClientToBeUpdated().isConsentRequired();
                 boolean newConsentRequired = clientUpdateContext.getProposedClientRepresentation().isConsentRequired();
 
-                if (!consentRequired && newConsentRequired) {
+                if (consentRequired && !newConsentRequired) {
                     throw new ClientPolicyException(Errors.NOT_ALLOWED, "Not permitted to update consentRequired to false");
                 }
                 break;
