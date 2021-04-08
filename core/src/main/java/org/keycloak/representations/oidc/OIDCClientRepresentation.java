@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Red Hat, Inc. and/or its affiliates
+ * Copyright 2021 Red Hat, Inc. and/or its affiliates
  * and other contributors as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -124,6 +124,9 @@ public class OIDCClientRepresentation {
     private Boolean backchannel_logout_session_required;
     
     private Boolean backchannel_logout_revoke_offline_tokens;
+
+    // PAR request.
+    private Boolean require_pushed_authorization_requests;
 
     public List<String> getRedirectUris() {
         return redirect_uris;
@@ -487,4 +490,11 @@ public class OIDCClientRepresentation {
         this.tls_client_auth_subject_dn = tls_client_auth_subject_dn;
     }
 
+    public Boolean getRequirePushedAuthorizationRequests() {
+        return require_pushed_authorization_requests;
+    }
+
+    public void setRequirePushedAuthorizationRequests(Boolean require_pushed_authorization_requests) {
+        this.require_pushed_authorization_requests = require_pushed_authorization_requests;
+    }
 }
